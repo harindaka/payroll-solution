@@ -1,0 +1,157 @@
+﻿@page "/"
+
+@using FluentValidation;
+@using PayrollSolution.Application.Common.Models;
+@using PayrollSolution.Application.PayslipGeneration;
+@using PayrollSolution.Ui.Data
+@using Blazored.FluentValidation
+
+@inject IPayrollApiClient PayrollApiClient
+@inject NavigationManager Navigation
+
+<PageTitle>Salary Calculator</PageTitle>
+
+@if (DisplayPayslipResult)
+{
+    @if (Payslip is null)
+    {
+        <p>Oops something went wrong. You may try again</p>
+    }
+    else
+    {
+        <h1>Salary Breakdown</h1>
+        <br />
+        <div>
+            <label>Employee Name</label><span>@Payslip.Name</span>
+        </div>
+        <div>
+            <label>Pay Period Start Date</label><span>@Payslip.PayPeriodStartDate</span>
+        </div>
+        <div>
+            <label>Pay Period End Date</label><span>@Payslip.PayPeriodEndDate</span>
+        </div>
+        <div>
+            <label>Gross Income</label><span>@ToCurrencyLabel(Payslip.GrossIncome)</span>
+        </div>
+        <div>
+            <label>Income Tax</label><span>@ToCurrencyLabel(@Payslip.IncomeTax)</span>
+        </div>
+        <div>
+            <label>Net Income</label><span>@ToCurrencyLabel(@Payslip.NetIncome)</span>
+        </div>
+        <div>
+            <label>Super</label><span>@ToCurrencyLabel(@Payslip.Super)</span>
+        </div>        
+    }
+
+    <br />
+    <button class="btn btn-primary" @onclick="ResetPage">Try Another</button>
+}
+else
+{
+    <h1>Salary Calculator</h1>
+    
+    <p>Use the form below to calculate the salary breakdown</p>
+
+    <EditForm Model=UserInput OnValidSubmit="ValidFormSubmitted">
+        <FluentValidationValidator />
+
+        <div>
+            <label for="FirstName">Employee First Name</label>
+            <InputText DisplayName="Employee First Name" id="FirstName" @bind-Value=UserInput.EmployeeFirstName />
+            <ValidationMessage For="() => UserInput.EmployeeFirstName" />
+        </div>
+        <div>
+            <label for="LastName">Employee Last Name</label>
+            <InputText DisplayName="Employee Last Name" id="LastName" @bind-Value=UserInput.EmployeeLastName />
+            <ValidationMessage For="() => UserInput.EmployeeLastName" />
+        </div>
+        <div>
+            <label for="PayPeriodYear">Pay Period Year</label>
+            <InputNumber DisplayName="Pay Period Year" id="PayPeriodYear" @bind-Value=UserInput.PayPeriodYear />
+            <ValidationMessage For="() => UserInput.PayPeriodYear" />
+        </div>
+        <div>
+            <label for="PayPeriodMonth">Pay Period Month</label>
+            <InputSelect DisplayName="Pay Period Month" id="PayPeriodMonth" @bind-Value="@UserInput.PayPeriodMonth">
+                @foreach (var month in Enum.GetValues<Month>())
+                {
+                    <option value="@month" selected="@(month==UserInput.PayPeriodMonth)">@month</option>
+                }
+            </InputSelect>
+            <ValidationMessage For="() => UserInput.PayPeriodMonth" />
+        </div>
+        <div>
+            <label for="AnnualSalary">Annual Salary</label>
+            <InputNumber DisplayName="Annual Salary" id="AnnualSalary" @bind-Value=UserInput.AnnualSalary />
+            <ValidationMessage For="() => UserInput.AnnualSalary" />
+        </div>
+        <div>
+            <label for="SuperRatePercentage">Super Rate (%)</label>
+            <InputNumber DisplayName="Super Rate Percentage" id="SuperRatePercentage" @bind-Value=UserInput.SuperRatePercentage />
+            <ValidationMessage For="() => UserInput.SuperRatePercentage" />
+        </div>
+
+        <br />
+        <input type="submit" class="btn btn-primary" value="Calculate" />
+    </EditForm>    
+}
+
+@code  {
+    FormData UserInput = new FormData();
+    bool DisplayPayslipResult;
+    PayslipDto? Payslip;
+
+    async Task ValidFormSubmitted(EditContext editContext)
+    {
+        var generatePayslipCommand = new GeneratePayslipCommand
+            {
+                FirstName = UserInput.EmployeeFirstName!,
+                LastName = UserInput.EmployeeLastName!,
+                AnnualSalary = UserInput.AnnualSalary!.Value,
+                PayPeriodYear = UserInput.PayPeriodYear!.Value,
+                PayPeriodMonth = UserInput.PayPeriodMonth,
+                SuperRate = UserInput.SuperRatePercentage!.Value / 100
+            };
+
+        var response = await PayrollApiClient.GeneratePayslip(generatePayslipCommand);
+        if(response.IsSuccessStatusCode && response.Content is not null)
+        {
+            Payslip = response.Content;
+        }
+
+        DisplayPayslipResult = true;
+    }
+
+    void ResetPage()
+    {
+        Navigation.NavigateTo("/", true);
+    }
+
+    string ToCurrencyLabel(decimal value)
+    {
+        return $"${value.ToString("0.00")}";
+    }
+
+    public class FormData
+    {
+        public string? EmployeeFirstName { get; set; }
+        public string? EmployeeLastName { get; set; }
+        public decimal? AnnualSalary { get; set; }
+        public decimal? SuperRatePercentage { get; set; }
+        public int? PayPeriodYear { get; set; }
+        public Month PayPeriodMonth { get; set; } = Month.January;
+    }
+
+    public class FormDataValidator : AbstractValidator<FormData>
+    {
+        public FormDataValidator()
+        {
+            RuleFor(x => x.EmployeeFirstName).NotEmpty();
+            RuleFor(x => x.EmployeeLastName).NotEmpty();
+            RuleFor(x => x.AnnualSalary).NotEmpty().GreaterThan(0m);
+            RuleFor(x => x.PayPeriodYear).NotEmpty().InclusiveBetween(Domain.PayPeriod.MinYear, DateTime.UtcNow.Year);
+            RuleFor(x => x.SuperRatePercentage).NotEmpty().InclusiveBetween(0, 100);
+        }
+    }
+}

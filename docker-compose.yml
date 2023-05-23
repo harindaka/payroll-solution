@@ -1,0 +1,15 @@
+version: '3.4'
+
+services:
+  payrollsolution.restapi:
+    image: ${DOCKER_REGISTRY-}payrollsolutionrestapi
+    build:
+      context: .
+      dockerfile: src/PayrollSolution.RestApi/Dockerfile
+
+  payrollsolution.ui:
+    image: ${DOCKER_REGISTRY-}payrollsolutionui
+    build:
+      context: .
+      dockerfile: src/PayrollSolution.Ui/Dockerfile
+
