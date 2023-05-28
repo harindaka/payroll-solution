@@ -12,7 +12,7 @@ The code is pretty much self explanatory and includes additional comments in cri
 * PayrollSolution.RestApi - Provides a lightweight REST API which exposes the business functions in the application layer to the outside (ultimately consumed by the web ui)
 * PayrollSolution.Ui - This user facing web ui project based on Blazor provides the necessary user interface for accessing the underlying domain functionality
 
-## Running the solution
+## Running the Solution
 
 You will need docker and docker-compose installed with support for linux containers on the host
 To build and run the solution;
@@ -24,11 +24,11 @@ To build and run the solution;
 
 The Web UI should be available via [http://localhost:3080/](http://localhost:3080/) on your browser
 
-## Accessing the Rest API
+## Accessing the REST API
 
 The web ui itself accesses the rest api [via docker's internal dns resolution](https://github.com/harindaka/payroll-solution/blob/a0d8ea5e92efcfa86d55093399729a39cd071b9d/src/PayrollSolution.Ui/appsettings.json#L4). However it should also be accessible to the host via [http://localhost:4080/](http://localhost:4080/) and API documentation via [http://localhost:4080/swagger/index.html](http://localhost:4080/swagger/index.html)
 
-## Running tests
+## Running Tests
 
 You can build and run the tests directly on the host. You will need the .Net v7 SDK installed before proceeding.
 
